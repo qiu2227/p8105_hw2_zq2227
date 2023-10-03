@@ -117,7 +117,7 @@ library(readxl)
 ### Mr.trash wheel
 ```{r}
 mrtrash_data = 
-  read_excel("./202207 Trash Wheel Collection Data.xlsx", sheet = 1,skip=1, n_max = 547)|># omit non-data entries  and rows that do not include dumpster-specific data.
+  read_excel("./202309 Trash Wheel Collection Data.xlsx", sheet = 1,skip=1, n_max = 584)|># omit non-data entries  and rows that do not include dumpster-specific data.
   janitor::clean_names()|>#clean up names of columns in data frames
   select(-x15,-x16,-month,-year)|> # clean columns containing notes and no data entries
   mutate(date=as.Date(date, format = "%m/%d/%y"))|>
@@ -134,7 +134,7 @@ mrtrash_data
 ### professor trash wheel
 ```{r}
 protrash_data=
-  read_excel("./202207 Trash Wheel Collection Data.xlsx", sheet = 2,skip=1, n_max = 94)|> #omit non-data entries and rows that do not include dumpster-specific data
+  read_excel("./202309 Trash Wheel Collection Data.xlsx", sheet = 2,skip=1, n_max = 106)|> #omit non-data entries and rows that do not include dumpster-specific data
   janitor::clean_names()|>
   select(-month,-year)|>
   mutate(date=as.Date(date, format = "%m/%d/%y"))|>
@@ -152,7 +152,7 @@ protrash_data
 ### Gwynnda trash wheel
 ```{r}
 gwytrash_data=
-  read_excel("./202207 Trash Wheel Collection Data.xlsx", sheet = 4,skip=1, n_max = 107)|> #omit non-data entries and rows
+  read_excel("./202309 Trash Wheel Collection Data.xlsx", sheet = 4,skip=1, n_max = 155)|> #omit non-data entries and rows
   janitor::clean_names()|>
   select(-month,-year)|>
   mutate(date=as.Date(date, format = "%m/%d/%y"))|>
@@ -175,7 +175,7 @@ trashmerge = full_join(mrpromerge,gwytrash_data)# combine the three data in one 
 trashmerge
 ```
 ```{r}
-write_csv(trashmerge,"./trashmergedata") #Exporting data as cvs. name is trashmergedata
+write_csv(trashmerge,"./trashmergedata.csv") #Exporting data as cvs. name is trashmergedata
 ```
 
 
@@ -185,28 +185,28 @@ protrash= filter(trashmerge,Name== "Professor")
 proweightsum= sum(protrash$weight_tons)
 proweightsum
 ```
-#### The total weight of trash collected by Professor Trash Wheel is 190.12tons.
+#### The total weight of trash collected by Professor Trash Wheel is 216.26tons.
 ```{r}
 gwycigjuly= filter(trashmerge,Name== "Gwynnda",year=="2021",month=="Jul")
-cigsum=sum(gwycigjuly$cigarette_butts)
+cigsum=sum(pull(gwycigjuly,cigarette_butts))
 cigsum
 ```
 #### The total number of cigarette butts collected by Gwynnda in July of 2021 are 16300.
 ```{r}
 summary(trashmerge)
 ```
-####  According to the data frame, we could knwo the average homes powered by three trash wheels is 50.23 and there are 747 days rcords for three trash wheels.
+####  According to the data frame, we could knwo the average homes powered by three trash wheels is 50.21 and there are 845 days rcords for three trash wheels.
 ```{r}
 totaltrashsum= sum(trashmerge$weight_tons)
 totaltrashsum
 ```
-#### The total trash collection by three wheels are 2249.26 tons.
+#### The total trash collection by three wheels are 2543.01 tons.
 ```{r}
 cigmax=filter(trashmerge,cigarette_butts==310000)
 cigmax
 ```
-#### In 09/02/2014 the Mrtrash collect the 31000 cigarette buttes that are maximum cigarette in the data. 
-#### The trash has 8 category:plastic_bottles,polystyrene , cigarette_butts , glass_bottles , grocery_bags, chip_bags , sports_balls , plastic_bags.
+#### In 09/03/2014 the Mrtrash collect the 31000 cigarette buttes that are maximum cigarette in the data. 
+#### The trash has 7 category:plastic_bottles,polystyrene , cigarette_butts , glass_bottles , plastic_bags,  wrapper,sports ball.
 
 
 
@@ -242,7 +242,7 @@ nrow(mcidevelop) # number of participants develop MCI
 93 participants develop MCI in basline data
 
 ```{r}
-mean(baseline_data$current_age) #average baseline age in cleaned baseline data. 
+mean(pull(baseline_data,current_age)) #average baseline age in cleaned baseline data. 
 ```
 The average baseline age in cleaned baseline data is 65.
 ```{r}
@@ -293,12 +293,15 @@ admerge=
 ```
 ```{r}
 admerge
-summary(admerge)
-write_csv(admerge,"./ADdieasedata") #Exporting data as cvs. name is ADdieasemergedata
+write_csv(admerge,"./ADdieasedata.csv") #Exporting data as cvs. name is ADdieasemergedata
 
 ```
 
 ### Observation and discussion
+```{r}
+summary(admerge)
+```
+
 ```{r}
 carrier=filter(admerge,apoe4=="Carrier")
 noncarrier=filter(admerge,apoe4=="Noncarrier")
