@@ -216,34 +216,35 @@ cigmax
 baseline_data = 
   read_csv("./MCI_baseline.csv", skip = 1)|>
   janitor::clean_names()|> # clean column 
-  filter(age_at_onset!= ".")|># remove participants who do not meet the criteria :no MCI at baseline
+  mutate(age_at_onset=replace(age_at_onset, age_at_onset == ".", NA_character_))|>
+  filter(current_age < age_at_onset|is.na(age_at_onset))|>#remove any participants who has MCI at baseline
   mutate(age_at_onset,age_at_onset=as.numeric(age_at_onset))|>
   mutate(sex,sex=ifelse(sex==1,"Male","Female"))|> # change the sex index from "1,0" to character
-  mutate(apoe4,apoe4=ifelse(apoe4==1,"Carrier","Noncarrier")) # change the apoe4  from "1,0" to character "carriwe, noncarrier.
+  mutate(apoe4,apoe4=ifelse(apoe4==1,"Carrier","Noncarrier")) # change the apoe4  from "1,0" to character "carrier, noncarrier.
 ```
 ```{r}
 baseline_data
 ```
-*  (a)
+
 ```{r}
 rawbaseline_data=
   read_csv("./MCI_baseline.csv", skip = 1)|>
   janitor::clean_names()
 
 rawbaseline_data
-nrow(rawbaseline_data)# number of participants were recruited in raw raw baseline data 
+nrow(rawbaseline_data)# number of participants were recruited in raw baseline data 
 ```
 483 participants were recruited in raw raw baseline data 
 ```{r}
-summary(baseline_data)
-nrow(baseline_data) # number of participants develop MCI
+mcidevelop=filter(baseline_data, !is.na(age_at_onset))
+nrow(mcidevelop) # number of participants develop MCI
 ```
-97 participants develop MCI in basline data
+93 participants develop MCI in basline data
 
 ```{r}
 mean(baseline_data$current_age) #average baseline age in cleaned baseline data. 
 ```
-The average baseline age in cleaned baseline data is 65.6.
+The average baseline age in cleaned baseline data is 65.
 ```{r}
 womennumber=filter(baseline_data,sex=="Female")
 nrow(womennumber)# number of total women number in post-processed baseline data. 
@@ -252,7 +253,7 @@ nrow(womencarrier)# number of women is APOE4 carrier#
 ratio=nrow(womencarrier)/nrow(womennumber)
 ratio # proportion of women in the study are APOE4 carriers: number of women carrier/  total women number in post-processed baseline data. 
 ```
-The proportion of women in the study are APOE4 carriers :0.652
+The proportion of women in the study are APOE4 carriers :0.3
 
 ### Biomarker data
 ```{r}
@@ -270,25 +271,25 @@ amyloid_data
 onlyinbaseline= anti_join(baseline_data,amyloid_data,by="id")
 onlyinbaseline
 ```
-There are 3 participants ID appear in only the baseline. ID is 14,49,268 
+There are 8 participants ID appear in only the baseline. 
 ```{r}
-onlyinamyloid=anti_join(amyloid_data,rawbaseline_data,by="id")
+onlyinamyloid=anti_join(amyloid_data,baseline_data,by="id")
 onlyinamyloid
 ```
-There are 12 participants ID appear in only the amyloid datasets.
+There are 16 participants ID appear in only the amyloid datasets.
 
 ### Combine the demographic and biomarker datasets 
 ```{r}
 admerge=
   inner_join(baseline_data,amyloid_data, by="id")|>#  keep the participants that appear in both  basline and amyloid datasets.
-  drop_na()|> # clean the NA data.
-  mutate(sex,sex=as.factor(sex))|> # change sex to factor 
-  mutate(apoe4,apoe4=as.factor(apoe4))|># change     APOE4 to factor 
+  mutate(sex,sex=as.factor(sex))|># change sex to factor 
+  mutate(apoe4,apoe4=as.factor(apoe4))|># change APOE4 to factor 
   mutate(baseline,baseline=as.numeric(baseline))|>
   mutate(time_2,time_2=as.numeric(time_2))|>
   mutate(time_4,time_4=as.numeric(time_4))|>
   mutate(time_6,time_6=as.numeric(time_6))|>
-  mutate(time_8,time_8=as.numeric(time_8))#change the variables: β42/40 ratio from chr to num so that esier to observation.
+  mutate(time_8,time_8=as.numeric(time_8))
+  #change the variables: β42/40 ratio from chr to num so that esier to observation.
 ```
 ```{r}
 admerge
@@ -303,19 +304,20 @@ carrier=filter(admerge,apoe4=="Carrier")
 noncarrier=filter(admerge,apoe4=="Noncarrier")
 ```
 ```{r}
-carriermean=tibble(meanvalue=c(mean(carrier$baseline),mean(carrier$time_2),mean(carrier$time_4),mean(carrier$time_6),mean(carrier$time_8)),time=c("baseline","time_2","time_4","time_6","time_8"),type="carrier")
+carriermean=tibble(meanvalue=c(mean(carrier$baseline),mean(carrier$time_2,na.rm = TRUE),mean(carrier$time_4,na.rm = TRUE),mean(carrier$time_6,na.rm = TRUE),mean(carrier$time_8,na.rm = TRUE)),time=c("baseline","time_2","time_4","time_6","time_8"),type="carrier")
 carriermean
-noncarriermean=tibble(meanvalue=c(mean(noncarrier$baseline),mean(noncarrier$time_2),mean(noncarrier$time_4),mean(noncarrier$time_6),mean(noncarrier$time_8)),time=c("baseline","time_2","time_4","time_6","time_8"),type="noncarrier")
+
+noncarriermean=tibble(meanvalue=c(mean(noncarrier$baseline,na.rm = TRUE),mean(noncarrier$time_2,na.rm = TRUE),mean(noncarrier$time_4,na.rm = TRUE),mean(noncarrier$time_6,na.rm = TRUE),mean(noncarrier$time_8,na.rm = TRUE)),time=c("baseline","time_2","time_4","time_6","time_8"),type="noncarrier")
 noncarriermean
 amyloidmcimean=bind_rows(carriermean,noncarriermean)
 
-apoe4compareplot=ggplot(amyloidmcimean, aes(x =time , y = meanvalue, color= type,group=type)) +geom_line()+geom_point()+labs(title = "β42/40 ratio between APOE4Carrier and APOE4Non-carrier in MCI patients", x = "Time", y = "Mean")+geom_text(aes(label = sprintf("%.3f", meanvalue)), vjust = -0.5)
+apoe4compareplot=ggplot(amyloidmcimean, aes(x =time , y = meanvalue, color= type,group=type)) +geom_line()+geom_point()+labs(title = "β42/40 ratio between APOE4Carrier and APOE4Non-carrier", x = "Time", y = "Ratio Mean")+geom_text(aes(label = sprintf("%.3f", meanvalue)), vjust = -0.5)
 
 apoe4compareplot
 ggsave("apoe4 ratio comparison.png",plot=apoe4compareplot)
 ```
-* According  to the plot,in the participants group who developed the MCI, the APOE4carrier has a lower β42/40 ratio than APOE4 non carrier.Since the APOE4 is significantly associated with a higher risk of developing Alzheimer’s disease and the  β 42/40 ratio linked to  clinical symptoms of Alzheimer’s disease.The MCI APOE4 carrier has a higher risk of developing Alzheimer’s disease accompanied by a lower β 42/40 ratio over time.
-A low β 42/40 also indicate the risk of Alzheimer’s disease.As  MCI patients age, their  β 42/40 ratio levels gradually decline. 
+* According  to the plot,in the baseline group, the APOE4carrier has a lower β42/40 ratio than APOE4 non carrier.Since the APOE4 is significantly associated with a higher risk of developing Alzheimer’s disease and the  β 42/40 ratio linked to  clinical symptoms of Alzheimer’s disease.The  APOE4 carrier has a higher risk of developing Alzheimer’s disease accompanied by a lower β 42/40 ratio over time.
+A low β 42/40 also indicate the risk of Alzheimer’s disease.As  participants age, their  β 42/40 ratio levels gradually decline. 
 
 
 
