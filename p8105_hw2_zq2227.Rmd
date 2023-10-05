@@ -227,14 +227,10 @@ baseline_data
 ```
 
 ```{r}
-rawbaseline_data=
-  read_csv("./MCI_baseline.csv", skip = 1)|>
-  janitor::clean_names()
 
-rawbaseline_data
-nrow(rawbaseline_data)# number of participants were recruited in raw baseline data 
+nrow(baseline_data)# number of participants were recruited in  baseline data 
 ```
-483 participants were recruited in raw raw baseline data 
+479 participants were recruited in baseline data 
 ```{r}
 mcidevelop=filter(baseline_data, !is.na(age_at_onset))
 nrow(mcidevelop) # number of participants develop MCI
@@ -244,7 +240,7 @@ nrow(mcidevelop) # number of participants develop MCI
 ```{r}
 mean(pull(baseline_data,current_age)) #average baseline age in cleaned baseline data. 
 ```
-The average baseline age in cleaned baseline data is 65.
+The average baseline age in cleaned baseline data is 65,03.
 ```{r}
 womennumber=filter(baseline_data,sex=="Female")
 nrow(womennumber)# number of total women number in post-processed baseline data. 
@@ -260,7 +256,11 @@ The proportion of women in the study are APOE4 carriers :0.3
 amyloid_data=
   read_csv("./mci_amyloid.csv", skip=1)|>#import
   janitor::clean_names()|>
-  rename(id=study_id)# change variables names same as baseline data
+  rename(id=study_id)|> # change variables names same as baseline data
+  pivot_longer(
+    baseline:time_8,
+    names_to = "time", 
+    values_to = "ratio")# tidy the dataset of longitudinally observed biomarker values
 ```
 ```{r}
 amyloid_data
@@ -275,6 +275,7 @@ There are 8 participants ID appear in only the baseline.
 ```{r}
 onlyinamyloid=anti_join(amyloid_data,baseline_data,by="id")
 onlyinamyloid
+nrow(onlyinamyloid)/5
 ```
 There are 16 participants ID appear in only the amyloid datasets.
 
@@ -284,12 +285,8 @@ admerge=
   inner_join(baseline_data,amyloid_data, by="id")|>#  keep the participants that appear in both  basline and amyloid datasets.
   mutate(sex,sex=as.factor(sex))|># change sex to factor 
   mutate(apoe4,apoe4=as.factor(apoe4))|># change APOE4 to factor 
-  mutate(baseline,baseline=as.numeric(baseline))|>
-  mutate(time_2,time_2=as.numeric(time_2))|>
-  mutate(time_4,time_4=as.numeric(time_4))|>
-  mutate(time_6,time_6=as.numeric(time_6))|>
-  mutate(time_8,time_8=as.numeric(time_8))
-  #change the variables: β42/40 ratio from chr to num so that esier to observation.
+  mutate(time,time=as.factor(time))|>
+  mutate(ratio,ratio=as.numeric(ratio)) #change the variables: β42/40 ratio from chr to num so that esier to observation.
 ```
 ```{r}
 admerge
@@ -301,22 +298,16 @@ write_csv(admerge,"./ADdieasedata.csv") #Exporting data as cvs. name is ADdiease
 ```{r}
 summary(admerge)
 ```
-
+#### Description: Thee averge age of the merge data is 65.05 and there are 1025 female and 1330 male in the data. The average education years is 16.38 yesrs. In the datasets, there are 710 participants are apoe4 carrier. In the MCI patients, the averge age at the onset of MCI is  70.51 years old. The median valuse of the β42/40 ratio is 0.10967.
 ```{r}
-carrier=filter(admerge,apoe4=="Carrier")
-noncarrier=filter(admerge,apoe4=="Noncarrier")
+apoe4compareplot=ggplot(admerge, aes(x = time, y = ratio)) +
+  geom_boxplot() +
+  facet_wrap(~ apoe4, ncol = 2) +
+  labs(title = "β42/40 ratio between APOE4Carrier and APOE4Non-carrier", x = "Time", y = "β
+ 42/40 Ratio ")
+apoe4compareplot
 ```
 ```{r}
-carriermean=tibble(meanvalue=c(mean(carrier$baseline),mean(carrier$time_2,na.rm = TRUE),mean(carrier$time_4,na.rm = TRUE),mean(carrier$time_6,na.rm = TRUE),mean(carrier$time_8,na.rm = TRUE)),time=c("baseline","time_2","time_4","time_6","time_8"),type="carrier")
-carriermean
-
-noncarriermean=tibble(meanvalue=c(mean(noncarrier$baseline,na.rm = TRUE),mean(noncarrier$time_2,na.rm = TRUE),mean(noncarrier$time_4,na.rm = TRUE),mean(noncarrier$time_6,na.rm = TRUE),mean(noncarrier$time_8,na.rm = TRUE)),time=c("baseline","time_2","time_4","time_6","time_8"),type="noncarrier")
-noncarriermean
-amyloidmcimean=bind_rows(carriermean,noncarriermean)
-
-apoe4compareplot=ggplot(amyloidmcimean, aes(x =time , y = meanvalue, color= type,group=type)) +geom_line()+geom_point()+labs(title = "β42/40 ratio between APOE4Carrier and APOE4Non-carrier", x = "Time", y = "Ratio Mean")+geom_text(aes(label = sprintf("%.3f", meanvalue)), vjust = -0.5)
-
-apoe4compareplot
 ggsave("apoe4 ratio comparison.png",plot=apoe4compareplot)
 ```
 * According  to the plot,in the baseline group, the APOE4carrier has a lower β42/40 ratio than APOE4 non carrier.Since the APOE4 is significantly associated with a higher risk of developing Alzheimer’s disease and the  β 42/40 ratio linked to  clinical symptoms of Alzheimer’s disease.The  APOE4 carrier has a higher risk of developing Alzheimer’s disease accompanied by a lower β 42/40 ratio over time.
